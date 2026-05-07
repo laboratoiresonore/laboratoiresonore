@@ -1,0 +1,40 @@
+# Greps tracked files for PII, LAN-IP, and token leaks. Fails the build
+# on any hit. Self-excludes this file (its own pattern list would
+# otherwise always match).
+#
+# Patterns are scoped to leaks that MUST NOT ship with the universal
+# installer regardless of which app it targets:
+#   - Owner identifiers (Theo, lmlgg, leguillaume, @gmail)
+#   - Private LAN IPs (192.168.86, 192.168.0.100)
+#   - GitHub tokens (classic + fine-grained PATs, with >=20 char body
+#     so legitimate prefix-validation code like
+#     ``tok.startswith("ghp_")`` doesn't false-positive)
+#   - Internal planning-doc names (MASTER_PLAN)
+#
+# Cross-repo product names (Beatweaver, Whimweaver, Spellcaster, etc)
+# are intentionally NOT in the pattern set: this repo's manifest
+# legitimately enumerates them as published install targets.
+name: Leak check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: git grep for forbidden patterns
+        shell: bash
+        run: |
+          set -uo pipefail
+          patterns='\bTheo\b|\btheo\b|192\.168\.86|192\.168\.0\.100|lmlgg|leguillaume|@gmail\.com|MASTER_PLAN|ghp_[A-Za-z0-9]{20,}|ghs_[A-Za-z0-9]{20,}|gho_[A-Za-z0-9]{20,}|ghu_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{40,}'
+          if git grep -nIE "$patterns" -- ':!.github/workflows/leak-check.yml'; then
+            echo "::error::Forbidden pattern detected in tracked files (see hits above)"
+            exit 1
+          fi
+          echo "Scan clean."
