@@ -9,6 +9,20 @@ python install.py --list      # CLI: list apps
 python install.py --install <app_id>
 ```
 
+## Install (no Python required)
+
+Native bundled installers are published on every release for all three
+desktop platforms. Pick the asset that matches your OS, download, run.
+
+| Platform | Asset                                  | How to run                              |
+| -------- | -------------------------------------- | --------------------------------------- |
+| Windows  | `LaboratoireSonore-Installer.exe`      | Double-click                            |
+| macOS    | `LaboratoireSonore-Installer.app.zip`  | Unzip, drag the `.app` into Applications, double-click |
+| Linux    | `LaboratoireSonore-Installer`          | `chmod +x` and `./LaboratoireSonore-Installer` |
+
+Technical users can skip the bundle and run `python install.py`
+directly against the bootstrap shim instead.
+
 ## Layout
 
 ```

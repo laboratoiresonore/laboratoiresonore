@@ -1,12 +1,20 @@
 # -*- mode: python ; coding: utf-8 -*-
 # PyInstaller spec for the LaboratoireSonore universal installer.
 #
-# Builds release/LaboratoireSonore-Installer.exe -- a single-file
-# windowed Windows binary aimed at non-technical users who don't have
-# Python installed. The bootstrap shim at installer/bootstrap/install.py
-# remains the canonical install path for technical users.
+# Builds a single-file windowed binary aimed at non-technical users
+# who don't have Python installed. The bootstrap shim at
+# installer/bootstrap/install.py remains the canonical install path
+# for technical users.
 #
-# Equivalent CLI:
+# Per-platform output:
+#   Windows -> dist/LaboratoireSonore-Installer.exe
+#   Linux   -> dist/LaboratoireSonore-Installer       (raw ELF)
+#   macOS   -> dist/LaboratoireSonore-Installer.app   (BUNDLE around
+#                                                      the same EXE)
+#
+# Equivalent CLI (Windows; on macOS/Linux swap the ';' for ':' --
+# tuples in `datas` below avoid the issue entirely so the spec is
+# portable as-is):
 #   pyinstaller --name LaboratoireSonore-Installer \
 #               --onefile \
 #               --windowed \
@@ -47,6 +55,11 @@ ENTRY = HERE / "src" / "lab_installer.py"
 # is "src/assets/heroes/*.png"; in the bundle they land at
 # "assets/heroes/<id>.png" so manifest.py / gui.py's runtime resolution
 # (Path(__file__).parent / "assets" / "heroes") still finds them.
+#
+# We pass datas as (src, dest) tuples rather than the CLI
+# "src;dest" / "src:dest" form precisely so the spec is portable
+# across Windows (sep=';') and macOS/Linux (sep=':') without
+# touching os.pathsep.
 hero_assets = [
     (str(HERE / "src" / "assets" / "heroes" / "*.png"), "assets/heroes"),
 ]
@@ -143,7 +156,9 @@ exe = EXE(
     runtime_tmpdir=None,
     # --windowed: hide the cmd-prompt window when launched by
     # double-clicking the .exe. CLI users invoke via PowerShell /
-    # cmd anyway, where stdout/stderr still bind correctly.
+    # cmd anyway, where stdout/stderr still bind correctly. On
+    # macOS this also tells PyInstaller to mark the resulting EXE
+    # as a windowed app, which BUNDLE() below wraps into a .app.
     console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
@@ -158,7 +173,37 @@ exe = EXE(
 # --onefile vs --onedir: presence of a COLLECT() step is what
 # distinguishes the two. By passing a.binaries + a.datas directly into
 # EXE() above (instead of into a separate COLLECT() at the end),
-# PyInstaller produces a single self-extracting LaboratoireSonore-
-# Installer.exe at dist/. Our GitHub Actions workflow then moves that
-# file to release/ before uploading it as a release asset.
+# PyInstaller produces a single self-extracting binary at dist/.
+# Our GitHub Actions workflow then moves that file to release/ before
+# uploading it as a release asset.
 
+# macOS extra step: wrap the EXE in a proper .app bundle. Without
+# BUNDLE(), PyInstaller on macOS emits a bare Mach-O at
+# dist/LaboratoireSonore-Installer that Finder treats as a Unix
+# executable -- double-clicking opens Terminal instead of launching
+# the GUI. BUNDLE() produces dist/LaboratoireSonore-Installer.app/
+# which Finder + Launchpad recognise as a real app. Linux + Windows
+# don't need (and don't support) BUNDLE(), so we gate it on
+# sys.platform.
+if sys.platform == "darwin":
+    app = BUNDLE(
+        exe,
+        name="LaboratoireSonore-Installer.app",
+        icon=None,
+        bundle_identifier="com.laboratoiresonore.installer",
+        info_plist={
+            # NSHighResolutionCapable: opt into Retina rendering --
+            # without it the Tk GUI looks pixelated on every modern
+            # Mac. Cheap to set and harmless on older displays.
+            "NSHighResolutionCapable": "True",
+            # LSBackgroundOnly=False: this is a foreground GUI app,
+            # not a daemon. Default is False but pinning it here
+            # documents intent.
+            "LSBackgroundOnly": "False",
+            # CFBundleShortVersionString is what Finder shows in the
+            # "Get Info" panel; we leave it as a placeholder rather
+            # than threading the git tag through to the spec, which
+            # would couple the build tool to the release process.
+            "CFBundleShortVersionString": "0.0.0",
+        },
+    )

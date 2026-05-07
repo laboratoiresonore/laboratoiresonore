@@ -13,11 +13,25 @@ on:
 
 jobs:
   build:
-    # The bundled .exe is Windows-only; non-technical macOS / Linux
-    # users continue to install via the Python bootstrap shim. If we
-    # later want a .app / .AppImage, add matrix entries here mirroring
-    # beatweaver/.github/workflows/build.yml.
-    runs-on: windows-latest
+    # Cross-platform matrix mirroring beatweaver/.github/workflows/
+    # build.yml. Each runner builds the same lab_installer.spec; the
+    # spec branches on sys.platform == 'darwin' to wrap the EXE in a
+    # .app bundle on macOS. Linux + Windows take the bare EXE path.
+    strategy:
+      # fail-fast: false -- a flaky macOS runner shouldn't kill an
+      # otherwise good Linux + Windows build. Each platform's release
+      # asset is independent, so partial success is still useful.
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: win
+          - os: macos-latest
+            platform: mac
+          - os: ubuntu-latest
+            platform: linux
+
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout code
@@ -32,22 +46,29 @@ jobs:
         # cryptography is a runtime dep of installer/src/crypto.py;
         # customtkinter + pillow are optional but bundling them gives
         # the polished GUI we ship to non-technical users; pyinstaller
-        # is the build tool itself.
+        # is the build tool itself. Identical deps on all three OSes
+        # so a regression on one platform reproduces on the others.
+        shell: bash
         run: |
           python -m pip install --upgrade pip
           pip install pyinstaller cryptography customtkinter pillow
 
-      - name: Build installer .exe
+      - name: Build installer (PyInstaller)
         # Run PyInstaller from the installer/ directory so SPECPATH
-        # resolves correctly inside lab_installer.spec.
+        # resolves correctly inside lab_installer.spec. bash works as
+        # the shell on Windows runners too (Git Bash ships with the
+        # image), so a single step covers all three OSes.
+        shell: bash
         working-directory: installer
         run: pyinstaller lab_installer.spec --noconfirm --clean
 
-      - name: Stage release artifact
-        # PyInstaller writes dist/LaboratoireSonore-Installer.exe; the
-        # release job expects release/LaboratoireSonore-Installer.exe
-        # so we move it once at the end of the build. New-Item -Force
-        # is idempotent on re-runs.
+      # Per-platform staging steps: PyInstaller's output filename
+      # differs across platforms (.exe / .app / bare ELF), so each
+      # runner moves its native artifact into release/ under the
+      # canonical name the release job expects.
+
+      - name: Stage release artifact (Windows)
+        if: matrix.platform == 'win'
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path release | Out-Null
@@ -55,7 +76,37 @@ jobs:
             installer/dist/LaboratoireSonore-Installer.exe `
             release/LaboratoireSonore-Installer.exe
 
-      - name: Verify .exe exists and is reasonable size
+      - name: Stage release artifact (macOS)
+        if: matrix.platform == 'mac'
+        # On macOS PyInstaller emits both a bare Mach-O AND a .app
+        # bundle (the spec's BUNDLE() step). We zip the .app because
+        # GitHub Releases serve files as raw downloads -- a .app is a
+        # directory and would lose its bundle structure on download.
+        # ditto preserves macOS metadata (resource forks, extended
+        # attrs) better than `zip -r`; matters for codesign later.
+        shell: bash
+        run: |
+          mkdir -p release
+          cd installer/dist
+          ditto -c -k --keepParent \
+            LaboratoireSonore-Installer.app \
+            ../../release/LaboratoireSonore-Installer.app.zip
+
+      - name: Stage release artifact (Linux)
+        if: matrix.platform == 'linux'
+        # Raw ELF binary; users `chmod +x` and run. AppImage packaging
+        # is deferred to v2 -- it requires linuxdeploy + a desktop
+        # file, which is a separate piece of yak-shaving. The bare
+        # ELF is enough for v1 and matches what the spec produces.
+        shell: bash
+        run: |
+          mkdir -p release
+          mv installer/dist/LaboratoireSonore-Installer \
+             release/LaboratoireSonore-Installer
+          chmod +x release/LaboratoireSonore-Installer
+
+      - name: Verify artifact exists and is reasonable size (Windows)
+        if: matrix.platform == 'win'
         # Sanity floor: 5 MB. Anything smaller means PyInstaller
         # silently produced a stub (e.g., entry script not found) and
         # we should fail the build before publishing a broken release.
@@ -76,11 +127,58 @@ jobs:
             exit 1
           }
 
+      - name: Verify artifact exists and is reasonable size (macOS)
+        if: matrix.platform == 'mac'
+        # The .app bundle as a zip is typically ~30 MB; floor at 5 MB
+        # to catch the same "PyInstaller produced a stub" failure
+        # mode the Windows check guards against. `stat -f %z` is the
+        # macOS-flavoured stat invocation (Linux uses `-c %s`).
+        shell: bash
+        run: |
+          asset="release/LaboratoireSonore-Installer.app.zip"
+          if [ ! -f "$asset" ]; then
+            echo "FATAL: $asset not produced by PyInstaller" >&2
+            exit 1
+          fi
+          size=$(stat -f %z "$asset")
+          size_mb=$(awk "BEGIN { printf \"%.2f\", $size / 1048576 }")
+          echo "Built $asset : ${size_mb} MB"
+          if [ "$size" -lt 5242880 ]; then
+            echo "FATAL: $asset is only ${size_mb} MB -- build is corrupt" >&2
+            exit 1
+          fi
+
+      - name: Verify artifact exists and is reasonable size (Linux)
+        if: matrix.platform == 'linux'
+        # The bare ELF is typically ~20 MB; floor at 5 MB. GNU stat's
+        # `-c %s` is what's available on Ubuntu runners (BSD `-f %z`
+        # would not work here -- different stat).
+        shell: bash
+        run: |
+          asset="release/LaboratoireSonore-Installer"
+          if [ ! -f "$asset" ]; then
+            echo "FATAL: $asset not produced by PyInstaller" >&2
+            exit 1
+          fi
+          size=$(stat -c %s "$asset")
+          size_mb=$(awk "BEGIN { printf \"%.2f\", $size / 1048576 }")
+          echo "Built $asset : ${size_mb} MB"
+          if [ "$size" -lt 5242880 ]; then
+            echo "FATAL: $asset is only ${size_mb} MB -- build is corrupt" >&2
+            exit 1
+          fi
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: laboratoiresonore-installer-windows
-          path: release/LaboratoireSonore-Installer.exe
+          name: laboratoiresonore-installer-${{ matrix.platform }}
+          # Glob covers all three native artifact shapes -- only one
+          # of these will actually exist on any given runner because
+          # of the per-platform staging steps above.
+          path: |
+            release/LaboratoireSonore-Installer.exe
+            release/LaboratoireSonore-Installer.app.zip
+            release/LaboratoireSonore-Installer
           if-no-files-found: error
 
   release:
