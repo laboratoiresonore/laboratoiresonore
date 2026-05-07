@@ -81,7 +81,7 @@ class EndToEndTests(unittest.TestCase):
 
             # Build a signed payload using the fresh private key.
             import json as _json
-            entitlements = {"apps": [{"id": "voodoomancer", "name": "VM"}]}
+            entitlements = {"apps": [{"id": "demo-private-app", "name": "Demo"}]}
             body = _json.dumps(entitlements, sort_keys=True,
                                 separators=(",", ":")).encode()
             header = (
@@ -113,7 +113,7 @@ class EndToEndTests(unittest.TestCase):
                 stego_loader._PUBLIC_KEY_PEM = original_pem
 
             self.assertIsNotNone(result)
-            self.assertEqual(result["apps"][0]["id"], "voodoomancer")
+            self.assertEqual(result["apps"][0]["id"], "demo-private-app")
 
     def test_signed_with_wrong_key_returns_none(self):
         # Sign with a key that DOESN'T match the embedded public --

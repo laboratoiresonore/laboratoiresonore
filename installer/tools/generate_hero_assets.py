@@ -4,7 +4,7 @@ manifest by submitting a workflow to a local Spellcaster ComfyUI instance.
 
 Workflow:
     # 1. Make sure Spellcaster's ComfyUI is running and reachable. The
-    #    default Theo endpoint is http://127.0.0.1:8190.
+    #    default local ComfyUI endpoint is http://127.0.0.1:8190.
 
     # 2. Review the per-app prompts before kicking off a long run:
     python tools/generate_hero_assets.py --list

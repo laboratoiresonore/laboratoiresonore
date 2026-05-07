@@ -57,7 +57,7 @@ class AccentColorTests(unittest.TestCase):
         int(result[1:], 16)  # raises if not valid hex
 
     def test_hashed_accent_is_deterministic(self):
-        app = {"id": "voodoomancer"}
+        app = {"id": "demo-private-app"}
         self.assertEqual(gui.accent_color_for(app), gui.accent_color_for(app))
 
     def test_distinct_ids_get_distinct_colours(self):

@@ -27,7 +27,7 @@ unless `--no-update` is passed.
 ## Properties
 
 - **Identical across repos** — same file in beatweaver, spellcaster,
-  ComfyUI-Spellcaster, voodoomancer, etc. Don't fork it.
+  ComfyUI-Spellcaster, etc. Don't fork it.
 - **No deps** — uses stdlib `urllib.request` only. Runs on any Python 3.10+.
 - **Offline-tolerant** — if the network is down but the cache exists,
   uses the cache. Errors only when there's nothing cached AND no network.
