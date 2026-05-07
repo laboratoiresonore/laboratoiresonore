@@ -24,9 +24,25 @@ git clone https://github.com/laboratoiresonore/laboratoiresonore && cd laboratoi
 python install.py
 ```
 
-`install.py` is the LaboratoireSonore Universal Installer — one shim, every project. Pick an app, click Install, the right release artifact for your platform downloads + runs. The same shim ships in every project's repo, so `python install.py` works from a clone of any sibling repo too.
+`install.py` is the LaboratoireSonore Universal Installer (currently v0.3.2) — one shim, every project. Pick an app, click Install, the right release artifact for your platform downloads + runs. The same shim ships in every project's repo, so `python install.py` works from a clone of any sibling repo too.
 
-If you don't have Python: download `LaboratoireSonore-Installer.exe` from the [latest release](https://github.com/laboratoiresonore/laboratoiresonore/releases/latest). Windows-only for now; macOS/Linux users pick the bootstrap path above.
+### No Python? Native bundles for every platform
+
+v0.3.2 publishes a bundled installer for all three desktop platforms — pick the asset that matches your OS from the [latest release](https://github.com/laboratoiresonore/laboratoiresonore/releases/latest):
+
+| Platform | Asset | How to run |
+|----------|-------|------------|
+| Windows | `LaboratoireSonore-Installer.exe` | Double-click |
+| macOS | `LaboratoireSonore-Installer.app.zip` | Unzip, drag the `.app` into Applications, double-click |
+| Linux | `LaboratoireSonore-Installer` | `chmod +x` then `./LaboratoireSonore-Installer` |
+
+<p align="center">
+  <a href="https://github.com/laboratoiresonore/laboratoiresonore/releases/latest/download/LaboratoireSonore-Installer.exe"><img src="https://img.shields.io/badge/Windows-Download-7c3aed?style=for-the-badge&logo=windows&logoColor=white" alt="Windows installer"/></a>
+  &nbsp;
+  <a href="https://github.com/laboratoiresonore/laboratoiresonore/releases/latest/download/LaboratoireSonore-Installer.app.zip"><img src="https://img.shields.io/badge/macOS-Download-7c3aed?style=for-the-badge&logo=apple&logoColor=white" alt="macOS bundle"/></a>
+  &nbsp;
+  <a href="https://github.com/laboratoiresonore/laboratoiresonore/releases/latest/download/LaboratoireSonore-Installer"><img src="https://img.shields.io/badge/Linux-Download-7c3aed?style=for-the-badge&logo=linux&logoColor=white" alt="Linux ELF"/></a>
+</p>
 
 ---
 
