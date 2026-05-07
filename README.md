@@ -59,7 +59,7 @@ A desktop app that listens to your DJ mix, detects BPM and key in real time, and
 
 For DJs who want to layer harmonic ear-candy without learning music theory — feed your mixer's monitor send into the laptop, hit a launch pad, you're now playing in key.
 
-Electron · React · Tone.js · MIT · Windows / macOS / Linux. ([repo →](https://github.com/laboratoiresonore/beatweaver))
+Electron · React · Tone.js · MIT · Windows / macOS / Linux. [Latest release →](https://github.com/laboratoiresonore/beatweaver/releases/latest) · [Repo →](https://github.com/laboratoiresonore/beatweaver)
 
 ---
 
