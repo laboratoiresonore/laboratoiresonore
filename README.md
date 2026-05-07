@@ -54,7 +54,7 @@ A desktop app that listens to your DJ mix, detects BPM and key in real time, and
 - **32 presets** across 4 categories (Bass, Energy, Texture, FX) × 2 banks. 6-instrument SynthFactory: acid bass, supersaw stab, arp, pad, lead, perc — with FM, sub-osc, formant filtering.
 - **First-class MIDI controller integration** with hot-plug, full LED feedback, and per-preset knob mapping.
 - **Per-column modulator slots** — Chorus / Phaser / Tremolo with seamless type-switching.
-- **3-tier TTS announcer** (local Kobold → Electron SAPI → browser SpeechSynthesis) for hands-free preset names + key-change cues.
+- **4-tier TTS announcer** (local Kobold → bundled offline-neural Companion → Electron SAPI → browser SpeechSynthesis) for hands-free preset names + key-change cues. The Companion auto-sizes a [Piper TTS](https://github.com/rhasspy/piper) voice to the host hardware on first launch — no LLM server required.
 - **Pioneer-CDJ-inspired UI** with a live VU meter as the BeatWeaver backdrop.
 
 For DJs who want to layer harmonic ear-candy without learning music theory — feed your mixer's monitor send into the laptop, hit a launch pad, you're now playing in key.
