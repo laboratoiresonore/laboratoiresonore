@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local maintainer state (never committed)
+*.local
+*.priv
+*.svg.local
+build/
+dist/
+.lab-installer/

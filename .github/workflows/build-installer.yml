@@ -1,0 +1,118 @@
+name: Build and Release Installer
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g., v0.3.0)'
+        required: false
+        default: 'dev'
+
+jobs:
+  build:
+    # The bundled .exe is Windows-only; non-technical macOS / Linux
+    # users continue to install via the Python bootstrap shim. If we
+    # later want a .app / .AppImage, add matrix entries here mirroring
+    # beatweaver/.github/workflows/build.yml.
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        # cryptography is a runtime dep of installer/src/crypto.py;
+        # customtkinter + pillow are optional but bundling them gives
+        # the polished GUI we ship to non-technical users; pyinstaller
+        # is the build tool itself.
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller cryptography customtkinter pillow
+
+      - name: Build installer .exe
+        # Run PyInstaller from the installer/ directory so SPECPATH
+        # resolves correctly inside lab_installer.spec.
+        working-directory: installer
+        run: pyinstaller lab_installer.spec --noconfirm --clean
+
+      - name: Stage release artifact
+        # PyInstaller writes dist/LaboratoireSonore-Installer.exe; the
+        # release job expects release/LaboratoireSonore-Installer.exe
+        # so we move it once at the end of the build. New-Item -Force
+        # is idempotent on re-runs.
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path release | Out-Null
+          Move-Item -Force `
+            installer/dist/LaboratoireSonore-Installer.exe `
+            release/LaboratoireSonore-Installer.exe
+
+      - name: Verify .exe exists and is reasonable size
+        # Sanity floor: 5 MB. Anything smaller means PyInstaller
+        # silently produced a stub (e.g., entry script not found) and
+        # we should fail the build before publishing a broken release.
+        # No upper bound check -- we'd rather ship a slightly chunky
+        # binary than block a release on a few MB of bloat.
+        shell: pwsh
+        run: |
+          $exe = "release/LaboratoireSonore-Installer.exe"
+          if (-not (Test-Path $exe)) {
+            Write-Error "FATAL: $exe not produced by PyInstaller"
+            exit 1
+          }
+          $size = (Get-Item $exe).Length
+          $sizeMB = [math]::Round($size / 1MB, 2)
+          Write-Host "Built $exe : $sizeMB MB"
+          if ($size -lt 5MB) {
+            Write-Error "FATAL: $exe is only $sizeMB MB -- build is corrupt"
+            exit 1
+          }
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: laboratoiresonore-installer-windows
+          path: release/LaboratoireSonore-Installer.exe
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    # softprops/action-gh-release needs `contents: write` to create the
+    # release entry + upload assets. The default GITHUB_TOKEN scope on
+    # public repos is read-only, so v0.2.0's first run failed at "Create
+    # Release" with HTTP 403. Locally-scoping the elevated permission to
+    # this job (instead of workflow-wide) follows least-privilege.
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: artifacts/**/*
+          draft: false
+          prerelease: false
+          # Auto-generate notes from commit/PR titles since the previous
+          # tag. v0.2.1's notes were hand-written via API PATCH; this
+          # makes the next release ship with a basic 'What's Changed'
+          # section out of the box. Hand-edits are still possible after
+          # the fact (gh release edit / API PATCH).
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

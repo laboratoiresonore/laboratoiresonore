@@ -17,6 +17,19 @@
 
 ---
 
+## One-liner install
+
+```bash
+git clone https://github.com/laboratoiresonore/laboratoiresonore && cd laboratoiresonore
+python install.py
+```
+
+`install.py` is the LaboratoireSonore Universal Installer — one shim, every project. Pick an app, click Install, the right release artifact for your platform downloads + runs. The same shim ships in every project's repo, so `python install.py` works from a clone of any sibling repo too.
+
+If you don't have Python: download `LaboratoireSonore-Installer.exe` from the [latest release](https://github.com/laboratoiresonore/laboratoiresonore/releases/latest). Windows-only for now; macOS/Linux users pick the bootstrap path above.
+
+---
+
 ## What we ship
 
 Three public projects, all 100% local, all open-source.
